@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Budget {
+  id                    String   @id @default(cuid())
+  aim                   String
+  month                 DateTime
+  wages                Float
+  mortgage             Float
+  bills                Float
+  travel               Float
+  groceries            Float
+  barclaycard          Float
+  monzoFlex            Float
+  amex                 Float
+  amountToSave         Float
+  previousMonthReflection String
+  upcomingCalendarNotes String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  events               Event[]
+  oneOffRepayments     CreditCardRepayment[]
+  transfers            TransferItem[]
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  name      String
+  amount    Float
+  budgetId  String
+  budget    Budget   @relation(fields: [budgetId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CreditCardRepayment {
+  id        String   @id @default(cuid())
+  name      String
+  amount    Float
+  budgetId  String
+  budget    Budget   @relation(fields: [budgetId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TransferItem {
+  id          String   @id @default(cuid())
+  description String
+  amount      Float
+  completed   Boolean  @default(false)
+  budgetId    String
+  budget      Budget   @relation(fields: [budgetId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
