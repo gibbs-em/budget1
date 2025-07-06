@@ -151,4 +151,40 @@ export async function PUT(request: Request) {
     console.error('Error updating budget:', error);
     return NextResponse.json({ error: 'Failed to update budget' }, { status: 500 });
   }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Budget ID is required' }, { status: 400 });
+    }
+
+    // First delete all related records
+    await prisma.$transaction([
+      prisma.event.deleteMany({
+        where: { budgetId: id },
+      }),
+      prisma.creditCardRepayment.deleteMany({
+        where: { budgetId: id },
+      }),
+      prisma.transferItem.deleteMany({
+        where: { budgetId: id },
+      }),
+      // Finally delete the budget
+      prisma.budget.delete({
+        where: { id },
+      }),
+    ]);
+
+    return NextResponse.json({ message: 'Budget deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting budget:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete budget', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
 } 

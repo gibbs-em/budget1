@@ -33,6 +33,7 @@ export default function BudgetPage() {
   const [budgetData, setBudgetData] = useState<BudgetData>(initialBudgetData);
   const [transfers, setTransfers] = useState<TransferItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Initialize transfers for new budget
   useEffect(() => {
@@ -58,7 +59,12 @@ export default function BudgetPage() {
           throw new Error("Failed to fetch budget");
         }
         const data = await response.json();
-        setBudgetData(data);
+        // Format the month to YYYY-MM for the input field
+        const formattedData = {
+          ...data,
+          month: new Date(data.month).toISOString().slice(0, 7)
+        };
+        setBudgetData(formattedData);
         // Use existing transfers from the database, or generate new ones if none exist
         setTransfers(
           data.transfers?.length > 0
@@ -110,6 +116,25 @@ export default function BudgetPage() {
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      const response = await fetch(`/api/budget?id=${params.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || 'Failed to delete budget');
+      }
+
+      // Redirect to the dashboard after successful deletion
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error deleting budget:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete budget. Please try again.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -119,7 +144,7 @@ export default function BudgetPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 py-8">
+    <main className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <Link
@@ -142,30 +167,73 @@ export default function BudgetPage() {
           </Link>
           <div className="flex items-center space-x-4">
             <h1 className="text-3xl font-bold text-gray-900">
-              {params.id === "new" ? "Create New Budget" : "Edit Budget"}
+              {params.id === "new" ? "Create New Budget" : `Edit Budget - ${new Date(budgetData.month).toLocaleDateString('en-GB', {
+                month: 'long',
+                year: 'numeric'
+              })}`}
             </h1>
           </div>
-          <button
-            onClick={handleSave}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Save Budget
-          </button>
+          <div className="flex items-center space-x-4">
+            {params.id !== "new" && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete Budget
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Save Budget
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-8">
-          <InputForm data={budgetData} onChange={setBudgetData} />
-          <BudgetSummary data={budgetData} />
-          <TransferList
-            transfers={transfers}
-            onTransferComplete={(id, completed) => {
-              setTransfers((prevTransfers) =>
-                prevTransfers.map((transfer) =>
-                  transfer.id === id ? { ...transfer, completed } : transfer
-                )
-              );
-            }}
-          />
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <h2 className="text-xl font-bold mb-4">Delete Budget</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this budget? This action cannot be undone.
+              </p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <InputForm data={budgetData} onChange={setBudgetData} />
+            <TransferList
+              transfers={transfers}
+              onTransferComplete={(id, completed) => {
+                setTransfers((prevTransfers) =>
+                  prevTransfers.map((transfer) =>
+                    transfer.id === id ? { ...transfer, completed } : transfer
+                  )
+                );
+              }}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <BudgetSummary data={budgetData} />
+          </div>
         </div>
       </div>
     </main>
